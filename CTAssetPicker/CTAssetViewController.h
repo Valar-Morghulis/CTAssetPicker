@@ -10,12 +10,15 @@
 
 #import "CTAssetDefines.h"
 #import "CTAssetDetailViewController.h"
-@interface CTAssetViewController : UITableViewController<CTAssetDetailViewControllerDelegate>
+@interface CTAssetViewController : UIViewController<CTAssetDetailViewControllerDelegate,UITableViewDataSource,UITableViewDelegate>
 {
     ALAssetsGroup * _assetsGroup;
     NSMutableArray * _indexPathsForSelectedItems;
     NSInteger _number;//选中的张数
+    UITableView * tableView;
+    UIButton * _doneButton;
 }
+@property(nonatomic,retain)  UITableView * tableView;
 @property (nonatomic, retain) ALAssetsGroup * _assetsGroup;
 @property (nonatomic, retain) NSMutableArray * _indexPathsForSelectedItems;
 

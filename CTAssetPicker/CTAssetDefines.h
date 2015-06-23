@@ -12,7 +12,6 @@
 #import <UIKit/UIKit.h>
 #import <AssetsLibrary/AssetsLibrary.h>
 
-#define IS_IOS7             ([[[UIDevice currentDevice] systemVersion] compare:@"7.0" options:NSNumericSearch] != NSOrderedAscending)
 #define kThumbnailLength    78.0f
 #define kThumbnailSize      CGSizeMake(kThumbnailLength, kThumbnailLength)
 #define kPopoverContentSize CGSizeMake(320, 480)

@@ -50,17 +50,25 @@
         self.navigationController.navigationBar.tintColor = [UIColor blackColor];
     }
     //
-    self.view.backgroundColor = [UIColor blackColor];
-    if (IOS7LATER)
-    {
-        _scrollView = [[UIScrollView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height - 50)];
-        _doneButton = [[UIButton alloc]initWithFrame:CGRectMake(244,  _scrollView.frame.size.height + 9, 61, 32)];
-    }
-    else
-    {
-        _scrollView = [[UIScrollView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height- 100)];
-        _doneButton = [[UIButton alloc]initWithFrame:CGRectMake(244,  _scrollView.frame.size.height + 11, 61, 32)];
-    }
+    
+    CGRect frame = self.view.frame;
+    
+    float doneButtonHeight = 32;
+    float doneButtonDisY = 9;
+    float doneButtonWidth = 61;
+    float doneButtonOriginX = frame.size.width - doneButtonWidth - 20;
+    //
+    float scrollOriginX = 0;
+    float scrollWidth = frame.size.width;
+    float scrollOriginY = 0;
+    float scrollHeight = frame.size.height - scrollOriginY - doneButtonHeight - doneButtonDisY * 2;
+    //
+    float doneButtonOriginY = scrollOriginY + scrollHeight + doneButtonDisY;
+    
+    _scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(scrollOriginX, scrollOriginY, scrollWidth, scrollHeight)];
+    _doneButton = [[UIButton alloc] initWithFrame:CGRectMake(doneButtonOriginX,  doneButtonOriginY, doneButtonWidth, doneButtonHeight)];
+
+    
     
     _scrollView.backgroundColor = [UIColor whiteColor];
     _scrollView.delegate = self;
@@ -83,7 +91,7 @@
     //
     [_doneButton setBackgroundImage:[UIImage imageWithContentsOfFile:[[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"CTAssetPicker.Bundle/Images/AssetsPickerComplete@2x.png"]] forState:UIControlStateNormal];
     
-    _doneButton .titleLabel.font = [UIFont systemFontOfSize:10];
+    _doneButton .titleLabel.font = [UIFont systemFontOfSize:13];
     [_doneButton addTarget:self action:@selector(done:) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:_doneButton];
     [_doneButton release];
@@ -92,6 +100,8 @@
     _selectedCount = [self._assets count];
     [self update:TRUE];//
 
+    //
+    self.view.backgroundColor = [UIColor blackColor];
 }
 
 -(void)done:(UIButton *)sender

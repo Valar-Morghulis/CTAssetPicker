@@ -9,6 +9,7 @@
 #import "CTAssetViewController.h"
 #import "CTAssetViewCell.h"
 #import "CTAssetPickerController.h"
+#define RGBA(r,g,b,a)							[UIColor colorWithRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:a]
 
 #define kAssetViewCellIdentifier           @"CTAssetViewCellIdentifier"
 
@@ -40,48 +41,99 @@
 @synthesize _numberOfPhotos;
 @synthesize _numberOfVideos;
 
+@synthesize tableView;
 -(void)dealloc
 {
     self._assets = 0;
     self._assetsGroup = 0;
     self._indexPathsForSelectedItems = 0;
+    self.tableView = 0;
     [super dealloc];
 }
 
-- (id)init
-{
-    if (self = [super init])
-    {
-        self._indexPathsForSelectedItems = [NSMutableArray array];
-        if (UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation))
-        {
-            self.tableView.contentInset = UIEdgeInsetsMake(9.0, 2.0, 0, 2.0);
-            _minimumInteritemSpacing = 3;
-            _minimumLineSpacing = 3;
-        }
-        else
-        {
-            self.tableView.contentInset = UIEdgeInsetsMake(9.0, 0, 0, 0);
-            _minimumInteritemSpacing = 2;
-            _minimumLineSpacing = 2;
-        }
-        //
-        if ([self respondsToSelector:@selector(setEdgesForExtendedLayout:)])
-            [self setEdgesForExtendedLayout:UIRectEdgeNone];
-        
-        if ([self respondsToSelector:@selector(setContentSizeForViewInPopover:)])
-            [self setContentSizeForViewInPopover:kPopoverContentSize];
-        [self.tableView setSeparatorStyle:UITableViewCellSeparatorStyleNone];
-    }
- 
-    return self;
-}
 
 - (void)viewDidLoad
 {
     [super viewDidLoad];
     //
-    self.tableView.backgroundColor = [UIColor whiteColor];
+    
+    CGRect frame = self.view.frame;
+    
+    float buttonContainerOriginX = 0;
+    float buttonContainerWidth = frame.size.width;
+    float buttonContainerHeight = 50;
+    float buttonContainerOriginY = frame.size.height - buttonContainerHeight - 44;
+    if([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0)
+    {
+        buttonContainerOriginY -= 20;
+    }
+    //
+    UIView * buttonContainer = [[[UIView alloc] initWithFrame:CGRectMake(buttonContainerOriginX, buttonContainerOriginY, buttonContainerWidth, buttonContainerHeight)] autorelease];
+    [self.view addSubview:buttonContainer];
+    buttonContainer.layer.borderWidth = 1;
+    buttonContainer.layer.borderColor = RGBA(216, 216, 216, 1).CGColor;
+    buttonContainer.backgroundColor = [UIColor whiteColor];
+    {
+        float buttonOriginX = 20;
+        float buttonWidth = 50;
+        float buttonOriginY = 9;
+        float buttonHeight = buttonContainerHeight - buttonOriginY * 2;
+        UIButton * nextStepButton = [[[UIButton alloc] initWithFrame:CGRectMake(buttonOriginX, buttonOriginY, buttonWidth, buttonHeight)] autorelease];
+        [buttonContainer addSubview:nextStepButton];
+        [nextStepButton addTarget:self action:@selector(nextStep:) forControlEvents:UIControlEventTouchUpInside];
+        [nextStepButton setTitle:@"预览" forState:UIControlStateNormal];
+        nextStepButton .titleLabel.font = [UIFont systemFontOfSize:14];
+        [nextStepButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+        nextStepButton.layer.borderColor = RGBA(216, 216, 216, 1).CGColor;
+        nextStepButton.layer.borderWidth = 1;
+        nextStepButton.layer.cornerRadius = 5;
+        //
+        buttonWidth = 61;
+        buttonOriginX = buttonContainerWidth - buttonWidth - buttonOriginX;
+        _doneButton = [[[UIButton alloc] initWithFrame:CGRectMake(buttonOriginX, buttonOriginY, buttonWidth, buttonHeight)] autorelease];
+        [buttonContainer addSubview:_doneButton];
+        [_doneButton setBackgroundImage:[UIImage imageWithContentsOfFile:[[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"CTAssetPicker.Bundle/Images/AssetsPickerComplete@2x.png"]] forState:UIControlStateNormal];
+        
+        _doneButton .titleLabel.font = [UIFont systemFontOfSize:13];
+        [_doneButton addTarget:self action:@selector(done:) forControlEvents:UIControlEventTouchUpInside];
+
+    }
+    //
+    float tableOriginX = 0;
+    float tableWidth = frame.size.width;
+    float tableOriginY = 0;
+    float tableHeight = buttonContainerOriginY;
+    self.tableView = [[[UITableView alloc] initWithFrame:CGRectMake(tableOriginX, tableOriginY, tableWidth, tableHeight)] autorelease];
+    [self.view addSubview:self.tableView];
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    
+    
+    self._indexPathsForSelectedItems = [NSMutableArray array];
+    if (UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation))
+    {
+        self.tableView.contentInset = UIEdgeInsetsMake(9.0, 2.0, 0, 2.0);
+        _minimumInteritemSpacing = 3;
+        _minimumLineSpacing = 3;
+    }
+    else
+    {
+        self.tableView.contentInset = UIEdgeInsetsMake(9.0, 0, 0, 0);
+        _minimumInteritemSpacing = 2;
+        _minimumLineSpacing = 2;
+    }
+    //
+    if ([self respondsToSelector:@selector(setEdgesForExtendedLayout:)])
+        [self setEdgesForExtendedLayout:UIRectEdgeNone];
+    
+    if ([self respondsToSelector:@selector(setContentSizeForViewInPopover:)])
+        [self setContentSizeForViewInPopover:kPopoverContentSize];
+    [self.tableView setSeparatorStyle:UITableViewCellSeparatorStyleNone];
+    //
+    NSString * title = [self._assetsGroup valueForProperty:ALAssetsGroupPropertyName];
+    self.title = title;
+    //
+    self.view.backgroundColor = [UIColor whiteColor];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -101,7 +153,32 @@
     [self.tableView reloadData];//重新加载
 }
 
-
+- (void)dismiss:(id)sender
+{
+    CTAssetPickerController *picker = (CTAssetPickerController *)self.navigationController;
+    
+    if (picker._delegate)
+        [picker._delegate assetPickerControllerDidCancel:picker];
+    
+    //[picker.presentingViewController dismissViewControllerAnimated:TRUE completion:NULL];
+}
+-(void)done:(UIButton *)button
+{
+    CTAssetPickerController *picker = (CTAssetPickerController *)self.navigationController;
+    
+    if (self._indexPathsForSelectedItems.count <= picker._minimumNumberOfSelection)
+    {
+        if (picker._delegate)
+        {
+            [picker._delegate assetPickerControllerDidMinimum:picker];
+        }
+    }
+    //
+    if(picker._delegate)
+    {
+        [picker._delegate assetPickerController:picker didFinishPickingAssets:self._indexPathsForSelectedItems];
+    }
+}
 #pragma mark - Rotation
 - (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
 {
@@ -127,18 +204,18 @@
 - (void)setupButtons
 {
     self.navigationItem.rightBarButtonItem =
-    [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"下一步", nil)
+    [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"取消", nil)
                                      style:UIBarButtonItemStylePlain
                                     target:self
-                                    action:@selector(nextStep:)] autorelease];
+                                    action:@selector(dismiss:)] autorelease];
     
-    if([[[UIDevice currentDevice]systemVersion]doubleValue]>=7.0)
+    if([[[UIDevice currentDevice]systemVersion]doubleValue] >= 7.0)
     {
         self.navigationItem.rightBarButtonItem.tintColor = [UIColor blackColor];
         self.navigationController.navigationBar.barTintColor = [UIColor whiteColor];
     }
-    //设置标题
-     [self setTitleWithSelectedIndexPaths:self._indexPathsForSelectedItems];
+    //设置
+     [self setDoneButtonTextWidthSelectedIndexPaths:self._indexPathsForSelectedItems];
 }
 
 - (void)setupAssets
@@ -224,7 +301,7 @@
 
 -(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return ceil(self._assets.count*1.0 / _columns) + 1;
+    return ceil(self._assets.count * 1.0 / _columns) + 1;
 }
 
 #pragma mark - UITableViewDelegate
@@ -271,7 +348,7 @@
     if (vc._delegate)
         [vc._delegate assetPickerController:vc didSelectAsset:asset];
     
-    [self setTitleWithSelectedIndexPaths:self._indexPathsForSelectedItems];
+    [self setDoneButtonTextWidthSelectedIndexPaths:self._indexPathsForSelectedItems];
 }
 
 - (void)didDeselectAsset:(CTAssetViewCell *)cell asset:(ALAsset *)asset
@@ -283,20 +360,17 @@
     if (vc._delegate)
         [vc._delegate assetPickerController:vc didDeselectAsset:asset];
     
-    [self setTitleWithSelectedIndexPaths:self._indexPathsForSelectedItems];
+    [self setDoneButtonTextWidthSelectedIndexPaths:self._indexPathsForSelectedItems];
 }
 
 
 #pragma mark - Title
 
-- (void)setTitleWithSelectedIndexPaths:(NSArray *)indexPaths
+- (void)setDoneButtonTextWidthSelectedIndexPaths:(NSArray *)indexPaths
 {
     _number = indexPaths.count;
     NSLog(@"self.number is %ld",self._number);
-    
-    CTAssetPickerController *vc = (CTAssetPickerController *)self.navigationController;
-    NSString * title = [self._assetsGroup valueForProperty:ALAssetsGroupPropertyName];
-    self.title = [NSString stringWithFormat:@"%@(%ld/%ld)",title,_number,vc._maximumNumberOfSelection];
+    [_doneButton setTitle:[NSString stringWithFormat:@"完成(%ld)",_number] forState:UIControlStateNormal];
 }
 
 
@@ -314,20 +388,7 @@
 #pragma mark CTAssetDetailViewControllerDelegate
 -(void)assetDetailDone:(CTAssetDetailViewController *)controller
 {
-    CTAssetPickerController *picker = (CTAssetPickerController *)self.navigationController;
-    
-    if (self._indexPathsForSelectedItems.count <= picker._minimumNumberOfSelection)
-    {
-        if (picker._delegate)
-        {
-            [picker._delegate assetPickerControllerDidMinimum:picker];
-        }
-    }
-    //
-    if(picker._delegate)
-    {
-        [picker._delegate assetPickerController:picker didFinishPickingAssets:self._indexPathsForSelectedItems];
-    }
+    [self done:0];
 }
 -(void)assetDetailBack:(CTAssetDetailViewController *)controller
 {
